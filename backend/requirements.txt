@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+pandas
+numpy
+scikit-learn
+xgboost
+miceforest
+openpyxl
+seaborn
+matplotlib
+plotly
+reportlab
+aiofiles
+pydantic
