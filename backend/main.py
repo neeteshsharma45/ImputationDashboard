@@ -9,6 +9,8 @@ import json
 import io
 import base64
 import traceback
+import pickle
+import glob
 from typing import Optional
 
 import numpy as np
@@ -43,9 +45,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for uploaded datasets and results
-datasets: dict = {}
-imputed_results: dict = {}
+# Use disk-based storage for persistence across workers on Render
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+def save_dataset(dataset_id: str, data_dict: dict):
+    path = os.path.join(DATA_DIR, f"{dataset_id}_dataset.pkl")
+    with open(path, "wb") as f:
+        pickle.dump(data_dict, f)
+
+def get_dataset(dataset_id: str) -> Optional[dict]:
+    path = os.path.join(DATA_DIR, f"{dataset_id}_dataset.pkl")
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    return None
+
+def save_imputed_result(result_key: str, data_dict: dict):
+    path = os.path.join(DATA_DIR, f"{result_key}_result.pkl")
+    with open(path, "wb") as f:
+        pickle.dump(data_dict, f)
+
+def get_imputed_result(result_key: str) -> Optional[dict]:
+    path = os.path.join(DATA_DIR, f"{result_key}_result.pkl")
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    return None
+
+def get_all_imputed_results(dataset_id: str) -> dict:
+    results = {}
+    pattern = os.path.join(DATA_DIR, f"{dataset_id}_*_result.pkl")
+    for path in glob.glob(pattern):
+        filename = os.path.basename(path)
+        result_key = filename.replace("_result.pkl", "")
+        with open(path, "rb") as f:
+            results[result_key] = pickle.load(f)
+    return results
 
 
 @app.get("/")
@@ -69,12 +105,12 @@ async def upload_dataset(file: UploadFile = File(...)):
 
         dataset_id = str(uuid.uuid4())[:8]
 
-        # Store the dataset
-        datasets[dataset_id] = {
+        # Store the dataset to disk
+        save_dataset(dataset_id, {
             "filename": file.filename,
             "original": df.copy(),
             "current": df.copy(),
-        }
+        })
 
         # Generate analytics
         analytics = generate_analytics(df)
@@ -95,11 +131,12 @@ async def upload_dataset(file: UploadFile = File(...)):
 @app.get("/api/analytics/{dataset_id}")
 def get_analytics(dataset_id: str):
     """Get analytics for a dataset."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df = datasets[dataset_id]["current"]
-    filename = datasets[dataset_id]["filename"]
+    df = dataset["current"]
+    filename = dataset["filename"]
     analytics = generate_analytics(df)
     return clean_json({
         "dataset_id": dataset_id, 
@@ -111,11 +148,12 @@ def get_analytics(dataset_id: str):
 @app.get("/api/eda/{dataset_id}")
 def get_eda(dataset_id: str):
     """Get comprehensive EDA for a dataset (general analysis, not missing-value specific)."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df = datasets[dataset_id]["original"]
-    filename = datasets[dataset_id]["filename"]
+    df = dataset["original"]
+    filename = dataset["filename"]
     eda = generate_eda(df)
     return clean_json({
         "dataset_id": dataset_id,
@@ -127,10 +165,11 @@ def get_eda(dataset_id: str):
 @app.post("/api/impute/{dataset_id}/{method}")
 def impute_dataset(dataset_id: str, method: str):
     """Run imputation on the dataset using the specified method."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df_original = datasets[dataset_id]["original"].copy()
+    df_original = dataset["original"].copy()
 
     if df_original.isnull().sum().sum() == 0:
         raise HTTPException(status_code=400, detail="No missing values found in the dataset.")
@@ -153,16 +192,17 @@ def impute_dataset(dataset_id: str, method: str):
         result = methods[method](df_original)
         imputed_df = result["imputed_df"]
 
-        # Store the imputed result
+        # Store the imputed result to disk
         result_key = f"{dataset_id}_{method}"
-        imputed_results[result_key] = {
+        save_imputed_result(result_key, {
             "imputed_df": imputed_df,
             "metrics": result["metrics"],
             "method": method,
-        }
+        })
 
-        # Update current dataset
-        datasets[dataset_id]["current"] = imputed_df.copy()
+        # Update current dataset on disk
+        dataset["current"] = imputed_df.copy()
+        save_dataset(dataset_id, dataset)
 
         # Generate comparison
         comparison = generate_comparison(df_original, imputed_df)
@@ -183,10 +223,11 @@ def impute_dataset(dataset_id: str, method: str):
 @app.post("/api/impute-all/{dataset_id}")
 def impute_all(dataset_id: str):
     """Run all imputation methods and compare results."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df_original = datasets[dataset_id]["original"].copy()
+    df_original = dataset["original"].copy()
 
     if df_original.isnull().sum().sum() == 0:
         raise HTTPException(status_code=400, detail="No missing values found.")
@@ -204,11 +245,11 @@ def impute_all(dataset_id: str):
         try:
             result = func(df_original.copy())
             result_key = f"{dataset_id}_{name}"
-            imputed_results[result_key] = {
+            save_imputed_result(result_key, {
                 "imputed_df": result["imputed_df"],
                 "metrics": result["metrics"],
                 "method": name,
-            }
+            })
             results[name] = {
                 "metrics": result["metrics"],
                 "comparison": generate_comparison(df_original, result["imputed_df"]),
@@ -238,19 +279,20 @@ def impute_all(dataset_id: str):
 @app.get("/api/comparison/{dataset_id}")
 def get_comparison(dataset_id: str):
     """Get comparison data for all imputed results."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df_original = datasets[dataset_id]["original"]
+    df_original = dataset["original"]
     comparisons = {}
 
-    for key, val in imputed_results.items():
-        if key.startswith(dataset_id):
-            method = val["method"]
-            comparisons[method] = {
-                "metrics": val["metrics"],
-                "comparison": generate_comparison(df_original, val["imputed_df"]),
-            }
+    all_results = get_all_imputed_results(dataset_id)
+    for key, val in all_results.items():
+        method = val["method"]
+        comparisons[method] = {
+            "metrics": val["metrics"],
+            "comparison": generate_comparison(df_original, val["imputed_df"]),
+        }
 
     return {"dataset_id": dataset_id, "comparisons": comparisons}
 
@@ -258,17 +300,19 @@ def get_comparison(dataset_id: str):
 @app.get("/api/download/{dataset_id}/{format}")
 def download_dataset(dataset_id: str, format: str, method: Optional[str] = None):
     """Download the imputed dataset in various formats."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     # Get the appropriate dataframe
     if method:
         result_key = f"{dataset_id}_{method}"
-        if result_key not in imputed_results:
+        result = get_imputed_result(result_key)
+        if not result:
             raise HTTPException(status_code=404, detail=f"No imputed result for method '{method}'")
-        df = imputed_results[result_key]["imputed_df"]
+        df = result["imputed_df"]
     else:
-        df = datasets[dataset_id]["current"]
+        df = dataset["current"]
 
     if format == "csv":
         stream = io.StringIO()
@@ -289,13 +333,13 @@ def download_dataset(dataset_id: str, format: str, method: Optional[str] = None)
             headers={"Content-Disposition": f"attachment; filename=imputed_data.xlsx"},
         )
     elif format == "pdf":
-        df_original = datasets[dataset_id]["original"]
+        df_original = dataset["original"]
 
         # Gather metrics for all methods
         all_metrics = {}
-        for key, val in imputed_results.items():
-            if key.startswith(dataset_id):
-                all_metrics[val["method"]] = val["metrics"]
+        all_results = get_all_imputed_results(dataset_id)
+        for key, val in all_results.items():
+            all_metrics[val["method"]] = val["metrics"]
 
         pdf_bytes = generate_pdf_report(df_original, df, all_metrics)
         return StreamingResponse(
@@ -310,10 +354,11 @@ def download_dataset(dataset_id: str, format: str, method: Optional[str] = None)
 @app.get("/api/preview/{dataset_id}")
 def preview_dataset(dataset_id: str, rows: int = 20):
     """Get a preview of the dataset."""
-    if dataset_id not in datasets:
+    dataset = get_dataset(dataset_id)
+    if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-    df = datasets[dataset_id]["current"]
+    df = dataset["current"]
     preview = df.head(rows)
 
     return clean_json({
