@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
-import { Upload, FileText, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Zap, BarChart3, Database, Cpu, Globe } from 'lucide-react'
+import { Upload, CheckCircle2, ArrowRight, ShieldCheck, Zap, BarChart3, Database, Cpu, Globe } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../utils/api'
 
@@ -68,44 +68,44 @@ const Home: React.FC<HomeProps> = ({ setDatasetId }) => {
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-24 md:pt-20 md:pb-32">
+      <section className="relative overflow-hidden pt-10 pb-16 md:pt-20 md:pb-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold mb-8 uppercase tracking-widest">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold mb-6 sm:mb-8 uppercase tracking-widest">
                 <Zap size={14} className="animate-pulse" /> Enterprise Data Imputation
               </div>
-              <h1 className="text-5xl md:text-7xl font-extrabold mb-6 leading-[1.05] tracking-tight text-white">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-4 sm:mb-6 leading-[1.05] tracking-tight text-white">
                 Solve Missing <br />
                 <span className="text-gradient">Data Challenges</span>
               </h1>
-              <p className="text-xl text-slate-400 mb-10 leading-relaxed max-w-lg">
+              <p className="text-base sm:text-lg lg:text-xl text-slate-400 mb-8 sm:mb-10 leading-relaxed max-w-lg">
                 ImpuTech AI utilizes state-of-the-art ensemble models to reconstruct missing values with unprecedented precision and statistical integrity.
               </p>
               
-              <div className="flex flex-wrap gap-5">
+              <div className="flex flex-wrap gap-3 sm:gap-5">
                 <button 
                   onClick={() => document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="btn-premium flex items-center gap-2 group"
+                  className="btn-premium flex items-center gap-2 group text-sm sm:text-base"
                 >
                   Analyze Dataset 
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button 
                   onClick={downloadSampleData}
-                  className="btn-secondary flex items-center gap-2 text-white"
+                  className="btn-secondary flex items-center gap-2 text-white text-sm sm:text-base"
                 >
-                  <Database size={18} /> Download Sample
+                  <Database size={16} /> Download Sample
                 </button>
               </div>
 
-              <div className="mt-12 flex items-center gap-6 text-slate-500 text-sm">
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-success" /> HIPAA Compliant</div>
-                <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-success" /> End-to-End Encryption</div>
+              <div className="mt-8 sm:mt-12 flex flex-wrap items-center gap-4 sm:gap-6 text-slate-500 text-xs sm:text-sm">
+                <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-success" /> HIPAA Compliant</div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={15} className="text-success" /> End-to-End Encryption</div>
               </div>
             </motion.div>
 
@@ -113,27 +113,27 @@ const Home: React.FC<HomeProps> = ({ setDatasetId }) => {
               initial={{ opacity: 0, scale: 0.9, rotate: 2 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className="relative"
+              className="relative mt-4 lg:mt-0"
             >
-              <div className="absolute -inset-10 bg-brand/20 blur-[120px] rounded-full animate-pulse-slow"></div>
-              <div className="relative glass-card p-2 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
-                <div className="bg-slate-950 rounded-[2.2rem] overflow-hidden">
+              <div className="absolute -inset-6 sm:-inset-10 bg-brand/20 blur-[80px] sm:blur-[120px] rounded-full animate-pulse-slow"></div>
+              <div className="relative glass-card p-2 rounded-[2rem] sm:rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                <div className="bg-slate-950 rounded-[1.8rem] sm:rounded-[2.2rem] overflow-hidden">
                   <img src={heroImg} alt="Dashboard Preview" className="w-full opacity-80 hover:opacity-100 transition-opacity duration-700" />
                 </div>
                 
-                {/* Floating Widgets */}
+                {/* Floating Widgets — hidden on very small screens */}
                 <motion.div 
                   animate={{ y: [0, -15, 0] }}
                   transition={{ repeat: Infinity, duration: 5 }}
-                  className="absolute top-10 -right-6 glass-card p-5 rounded-2xl border-white/10 z-20 shadow-2xl"
+                  className="hidden sm:block absolute top-6 -right-4 lg:-right-6 glass-card p-3 sm:p-5 rounded-2xl border-white/10 z-20 shadow-2xl"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-success/20 rounded-xl flex items-center justify-center text-success">
-                      <ShieldCheck size={22} />
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 bg-success/20 rounded-xl flex items-center justify-center text-success">
+                      <ShieldCheck size={18} />
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Confidence</div>
-                      <div className="text-lg font-bold text-white">99.8%</div>
+                      <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest">Confidence</div>
+                      <div className="text-base sm:text-lg font-bold text-white">99.8%</div>
                     </div>
                   </div>
                 </motion.div>
@@ -141,15 +141,15 @@ const Home: React.FC<HomeProps> = ({ setDatasetId }) => {
                 <motion.div 
                   animate={{ y: [0, 15, 0] }}
                   transition={{ repeat: Infinity, duration: 6, delay: 1 }}
-                  className="absolute bottom-12 -left-8 glass-card p-5 rounded-2xl border-white/10 z-20 shadow-2xl"
+                  className="hidden sm:block absolute bottom-8 -left-4 lg:-left-8 glass-card p-3 sm:p-5 rounded-2xl border-white/10 z-20 shadow-2xl"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 bg-brand/20 rounded-xl flex items-center justify-center text-brand">
-                      <Cpu size={22} />
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 sm:h-10 sm:w-10 bg-brand/20 rounded-xl flex items-center justify-center text-brand">
+                      <Cpu size={18} />
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Model</div>
-                      <div className="text-lg font-bold text-white">HybridForest™</div>
+                      <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest">Model</div>
+                      <div className="text-base sm:text-lg font-bold text-white">HybridForest™</div>
                     </div>
                   </div>
                 </motion.div>
@@ -160,68 +160,69 @@ const Home: React.FC<HomeProps> = ({ setDatasetId }) => {
       </section>
 
       {/* Upload Section */}
-      <section id="upload-section" className="py-24 bg-slate-900/30 scroll-mt-20">
-        <div className="max-w-4xl mx-auto px-4 text-white">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Start Your Analysis</h2>
-            <p className="text-slate-400">Securely upload your data for comprehensive missing value evaluation.</p>
+      <section id="upload-section" className="py-16 sm:py-24 bg-slate-900/30 scroll-mt-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-white">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3 sm:mb-4">Start Your Analysis</h2>
+            <p className="text-slate-400 text-sm sm:text-base">Securely upload your data for comprehensive missing value evaluation.</p>
           </div>
 
           <div
-            className={`relative group cursor-pointer rounded-3xl border-2 border-dashed transition-all duration-500 p-16 text-center
+            className={`relative group cursor-pointer rounded-2xl sm:rounded-3xl border-2 border-dashed transition-all duration-500 p-8 sm:p-16 text-center
               ${isDragActive ? 'border-brand bg-brand/5 shadow-[0_0_50px_rgba(56,189,248,0.15)]' : 'border-slate-800 hover:border-brand/40 bg-slate-900/50'}
               ${isUploading ? 'pointer-events-none opacity-50' : ''}
             `}
             {...getRootProps()}
           >
             <input {...getInputProps()} />
-            <div className="flex flex-col items-center gap-6">
-              <div className={`w-20 h-20 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ${isDragActive ? 'text-brand' : 'text-slate-500'}`}>
-                <Upload size={42} />
+            <div className="flex flex-col items-center gap-4 sm:gap-6">
+              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 ${isDragActive ? 'text-brand' : 'text-slate-500'}`}>
+                <Upload size={32} className="sm:hidden" />
+                <Upload size={42} className="hidden sm:block" />
               </div>
               <div>
-                <p className="text-2xl font-bold mb-3">
+                <p className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3">
                   {isDragActive ? 'Release to Impute' : 'Drag & Drop Data'}
                 </p>
-                <p className="text-slate-500">
+                <p className="text-slate-500 text-sm sm:text-base">
                   Accepts CSV, XLSX, and XLS formats up to 50MB
                 </p>
               </div>
               
               {isUploading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 rounded-3xl backdrop-blur-sm">
-                  <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand mb-4"></div>
-                  <p className="text-brand font-bold animate-pulse">Running ML Analytics...</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 rounded-2xl sm:rounded-3xl backdrop-blur-sm">
+                  <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-t-2 border-b-2 border-brand mb-4"></div>
+                  <p className="text-brand font-bold animate-pulse text-sm sm:text-base">Running ML Analytics...</p>
                 </div>
               )}
             </div>
           </div>
           
-          <div className="mt-8 flex justify-center gap-8 text-xs font-medium text-slate-600 uppercase tracking-widest">
-            <span className="flex items-center gap-2 text-slate-500"><Globe size={14} /> Global Privacy</span>
-            <span className="flex items-center gap-2 text-slate-500"><Database size={14} /> Cloud Backup</span>
-            <span className="flex items-center gap-2 text-slate-500"><ShieldCheck size={14} /> SOC2 Compliant</span>
+          <div className="mt-6 sm:mt-8 flex flex-wrap justify-center gap-4 sm:gap-8 text-xs font-medium text-slate-600 uppercase tracking-widest">
+            <span className="flex items-center gap-2 text-slate-500"><Globe size={13} /> Global Privacy</span>
+            <span className="flex items-center gap-2 text-slate-500"><Database size={13} /> Cloud Backup</span>
+            <span className="flex items-center gap-2 text-slate-500"><ShieldCheck size={13} /> SOC2 Compliant</span>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="py-32">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-10">
+      <section className="py-20 sm:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-10">
             {[
               {
-                icon: <BarChart3 className="text-brand" size={40} />,
+                icon: <BarChart3 className="text-brand" size={36} />,
                 title: "Predictive Analytics",
                 desc: "Go beyond simple statistics. Our engine identifies complex correlations to understand the nature of your missing data."
               },
               {
-                icon: <Cpu className="text-accent" size={40} />,
+                icon: <Cpu className="text-accent" size={36} />,
                 title: "HybridForest™ Engine",
                 desc: "Our proprietary ensemble method combining Random Forests and Gradient Boosting for superior accuracy."
               },
               {
-                icon: <Globe className="text-success" size={40} />,
+                icon: <Globe className="text-success" size={36} />,
                 title: "Export Ready",
                 desc: "Download cleaned datasets directly in production-ready formats with complete imputation reports."
               }
@@ -232,11 +233,11 @@ const Home: React.FC<HomeProps> = ({ setDatasetId }) => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="glass-card p-10 rounded-[2rem]"
+                className="glass-card p-7 sm:p-10 rounded-[1.5rem] sm:rounded-[2rem]"
               >
-                <div className="mb-8">{feat.icon}</div>
-                <h3 className="text-2xl font-bold mb-4 text-white">{feat.title}</h3>
-                <p className="text-slate-400 leading-relaxed font-medium">
+                <div className="mb-5 sm:mb-8">{feat.icon}</div>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-white">{feat.title}</h3>
+                <p className="text-slate-400 leading-relaxed font-medium text-sm sm:text-base">
                   {feat.desc}
                 </p>
               </motion.div>

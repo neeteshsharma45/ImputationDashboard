@@ -25,6 +25,7 @@ from app.models.imputations import (
     run_hybridforest_imputation,
 )
 from app.utils.analytics import generate_analytics, generate_comparison, clean_json
+from app.utils.eda import generate_eda
 from app.utils.report import generate_pdf_report
 
 app = FastAPI(
@@ -104,6 +105,22 @@ def get_analytics(dataset_id: str):
         "dataset_id": dataset_id, 
         "filename": filename,
         "analytics": analytics
+    })
+
+
+@app.get("/api/eda/{dataset_id}")
+def get_eda(dataset_id: str):
+    """Get comprehensive EDA for a dataset (general analysis, not missing-value specific)."""
+    if dataset_id not in datasets:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+    df = datasets[dataset_id]["original"]
+    filename = datasets[dataset_id]["filename"]
+    eda = generate_eda(df)
+    return clean_json({
+        "dataset_id": dataset_id,
+        "filename": filename,
+        "eda": eda
     })
 
 

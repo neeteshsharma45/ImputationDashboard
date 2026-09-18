@@ -1,7 +1,6 @@
 import axios from 'axios'
 
-const BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').trim().replace(/\/+$/, '');
-const API_BASE_URL = `${BASE_URL}/api`;
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api').trim().replace(/\/+$/, '');
 
 export const api = {
   uploadDataset: (file: File) => {
@@ -10,6 +9,7 @@ export const api = {
     return axios.post(`${API_BASE_URL}/upload`, formData)
   },
   getAnalytics: (datasetId: string) => axios.get(`${API_BASE_URL}/analytics/${datasetId}`),
+  getEDA: (datasetId: string) => axios.get(`${API_BASE_URL}/eda/${datasetId}`),
   runImputation: (datasetId: string, method: string) => axios.post(`${API_BASE_URL}/impute/${datasetId}/${method}`),
   getComparison: (datasetId: string) => axios.get(`${API_BASE_URL}/comparison/${datasetId}`),
   getPreview: (datasetId: string) => axios.get(`${API_BASE_URL}/preview/${datasetId}`),

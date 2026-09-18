@@ -28,131 +28,199 @@ def clean_json(obj):
 
 
 def generate_analytics(df: pd.DataFrame) -> dict:
-    """Generate comprehensive analytics for a dataframe."""
+    """Generate comprehensive missing value analytics for a dataframe."""
     total_rows, total_cols = df.shape
-    missing_cells = int(df.isnull().sum().sum())
-    duplicate_rows = int(df.duplicated().sum())
+    missing_mask = df.isnull()
+    missing_cells = int(missing_mask.sum().sum())
+    missing_percentage = round(missing_cells / (total_rows * total_cols) * 100, 2) if total_rows * total_cols > 0 else 0
 
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    # Affected features
+    missing_per_col = missing_mask.sum()
+    affected_features = int((missing_per_col > 0).sum())
+    
+    missing_per_col_dict = {k: int(v) for k, v in missing_per_col.items()}
+    missing_pct_per_col = {k: round(v / total_rows * 100, 2) for k, v in missing_per_col_dict.items()}
 
-    # Missing values per column
-    missing_per_col = df.isnull().sum().to_dict()
-    missing_per_col = {k: int(v) for k, v in missing_per_col.items()}
+    # Severity
+    if missing_cells == 0:
+        severity = "None"
+    elif missing_percentage < 5:
+        severity = "Low"
+    elif missing_percentage < 15:
+        severity = "Moderate"
+    elif missing_percentage < 30:
+        severity = "High"
+    else:
+        severity = "Critical"
 
-    # Missing percentage per column
-    missing_pct = {k: round(v / total_rows * 100, 2) for k, v in missing_per_col.items()}
+    # Row-wise missingness
+    row_missing_counts = missing_mask.sum(axis=1)
+    complete_rows = int((row_missing_counts == 0).sum())
+    incomplete_rows = total_rows - complete_rows
+    
+    # Get top 5 most incomplete rows
+    most_incomplete = []
+    if incomplete_rows > 0:
+        top_indices = row_missing_counts.nlargest(5)
+        for idx, count in top_indices.items():
+            if count > 0:
+                most_incomplete.append({
+                    "row_index": int(idx),
+                    "missing_count": int(count),
+                    "missing_pct": round(int(count) / total_cols * 100, 2)
+                })
 
-    # Data types
-    dtypes = {col: str(dtype) for col, dtype in df.dtypes.items()}
-
-    # Memory usage
-    memory_usage = round(df.memory_usage(deep=True).sum() / 1024, 2)  # KB
-
-    # Statistical summary for numeric columns
-    stats = {}
-    for col in numeric_cols:
-        col_data = df[col].dropna()
-        if len(col_data) > 0:
-            stats[col] = {
-                "mean": round(float(col_data.mean()), 2),
-                "median": round(float(col_data.median()), 2),
-                "mode": round(float(col_data.mode().iloc[0]), 2) if len(col_data.mode()) > 0 else None,
-                "std": round(float(col_data.std()), 2),
-                "min": round(float(col_data.min()), 2),
-                "max": round(float(col_data.max()), 2),
-                "q25": round(float(col_data.quantile(0.25)), 2),
-                "q75": round(float(col_data.quantile(0.75)), 2),
-                "missing_pct": round(float(df[col].isnull().sum() / total_rows * 100), 2),
-            }
-
-    # Correlation matrix for numeric columns
-    correlation = {}
-    if len(numeric_cols) > 1:
-        corr_matrix = df[numeric_cols].corr()
-        correlation = {
-            "columns": numeric_cols,
-            "values": corr_matrix.round(2).values.tolist(),
-        }
-
-    # Missing value heatmap data
-    missing_heatmap = {}
-    cols_with_missing = [c for c in df.columns if df[c].isnull().any()]
-    if cols_with_missing:
-        sample_size = min(50, total_rows)
-        sample_indices = np.linspace(0, total_rows - 1, sample_size, dtype=int)
-        heatmap_data = df.iloc[sample_indices][cols_with_missing].isnull().astype(int)
-        missing_heatmap = {
-            "columns": cols_with_missing,
-            "data": heatmap_data.values.tolist(),
-            "row_indices": sample_indices.tolist(),
-        }
-
-    # Histogram data for numeric columns
-    histograms = {}
-    for col in numeric_cols[:10]:  # Limit to first 10
-        col_data = df[col].dropna()
-        if len(col_data) > 0:
-            counts, bin_edges = np.histogram(col_data, bins=20)
-            histograms[col] = {
-                "counts": counts.tolist(),
-                "bins": [round(float(b), 2) for b in bin_edges.tolist()],
-            }
-
-    # Boxplot data for numeric columns
-    boxplots = {}
-    for col in numeric_cols[:10]:
-        col_data = df[col].dropna()
-        if len(col_data) > 0:
-            q1 = float(col_data.quantile(0.25))
-            q3 = float(col_data.quantile(0.75))
-            iqr = q3 - q1
-            whisker_low = float(col_data[col_data >= q1 - 1.5 * iqr].min())
-            whisker_high = float(col_data[col_data <= q3 + 1.5 * iqr].max())
-            outliers = col_data[(col_data < q1 - 1.5 * iqr) | (col_data > q3 + 1.5 * iqr)].tolist()
-
-            boxplots[col] = {
-                "min": whisker_low,
-                "q1": round(q1, 2),
-                "median": round(float(col_data.median()), 2),
-                "q3": round(q3, 2),
-                "max": whisker_high,
-                "outliers": [round(float(o), 2) for o in outliers[:50]],
-            }
-
-    # Data type distribution for pie chart
-    dtype_distribution = {
-        "Numeric": len(numeric_cols),
-        "Categorical": len(categorical_cols),
+    # Missingness Matrix (Subsampled for Plotly Heatmap)
+    sample_size = min(500, total_rows)
+    if incomplete_rows > 0 and total_rows > sample_size:
+        incomplete_idx = row_missing_counts[row_missing_counts > 0].index
+        complete_idx = row_missing_counts[row_missing_counts == 0].index
+        
+        n_inc = min(250, len(incomplete_idx))
+        n_comp = sample_size - n_inc
+        
+        if n_comp > len(complete_idx):
+            n_comp = len(complete_idx)
+            n_inc = sample_size - n_comp
+            
+        sampled_idx = list(np.random.choice(incomplete_idx, n_inc, replace=False)) + \
+                      list(np.random.choice(complete_idx, n_comp, replace=False))
+        sampled_idx.sort()
+    else:
+        sampled_idx = np.linspace(0, total_rows - 1, sample_size, dtype=int).tolist()
+        
+    heatmap_data = missing_mask.iloc[sampled_idx].astype(int)
+    missing_matrix = {
+        "columns": list(df.columns),
+        "data": heatmap_data.values.tolist(),
+        "row_indices": [int(x) for x in sampled_idx]
     }
 
-    # Dataset preview (first 20 rows)
-    preview_data = df.head(20).where(pd.notnull(df.head(20)), None).values.tolist()
+    # Missingness Patterns (Combinations of missing features)
+    missing_patterns = []
+    if missing_cells > 0:
+        cols_with_missing = [c for c in df.columns if missing_per_col[c] > 0]
+        if len(cols_with_missing) > 1:
+            pattern_counts = missing_mask[cols_with_missing].apply(lambda x: tuple(x), axis=1).value_counts()
+            for pattern, count in pattern_counts.head(10).items():
+                if any(pattern): # If at least one feature is missing
+                    missing_feats = [cols_with_missing[i] for i, is_missing in enumerate(pattern) if is_missing]
+                    missing_patterns.append({
+                        "features": missing_feats,
+                        "count": int(count),
+                        "percentage": round(int(count) / total_rows * 100, 2)
+                    })
+
+    # Missingness Correlation
+    missing_correlation = {}
+    cols_with_missing = [c for c in df.columns if missing_per_col[c] > 0]
+    if len(cols_with_missing) > 1:
+        corr = missing_mask[cols_with_missing].corr().fillna(0)
+        missing_correlation = {
+            "columns": cols_with_missing,
+            "values": corr.round(2).values.tolist()
+        }
+
+    # Potential Missing Indicators
+    suspicious_values = ["", " ", "NULL", "null", "Null", "NA", "na", "N/A", "n/a", "-1", "0", "?", "none", "None"]
+    potential_indicators = []
+    for col in df.columns:
+        if df[col].dtype == object or df[col].dtype.name == 'category':
+            matches = df[col].isin(suspicious_values).sum()
+            if matches > 0:
+                potential_indicators.append({
+                    "feature": col,
+                    "value": "string placeholders (NULL, NA, etc.)",
+                    "count": int(matches),
+                    "percentage": round(int(matches) / total_rows * 100, 2)
+                })
+        elif np.issubdtype(df[col].dtype, np.number):
+            zero_count = (df[col] == 0).sum()
+            neg1_count = (df[col] == -1).sum()
+            if neg1_count > 0 and neg1_count < total_rows * 0.1:
+                 potential_indicators.append({
+                    "feature": col,
+                    "value": "-1",
+                    "count": int(neg1_count),
+                    "percentage": round(int(neg1_count) / total_rows * 100, 2)
+                })
+
+    potential_indicators = sorted(potential_indicators, key=lambda x: x["count"], reverse=True)
+
+    # Missingness Summary Table
+    summary_table = []
+    for col in df.columns:
+        missing_cnt = missing_per_col_dict[col]
+        missing_pct = missing_pct_per_col[col]
+        
+        status = "Clean"
+        if missing_pct > 50:
+            status = "Critical"
+        elif missing_pct > 20:
+            status = "High"
+        elif missing_pct > 5:
+            status = "Moderate"
+        elif missing_pct > 0:
+            status = "Low"
+
+        summary_table.append({
+            "feature": col,
+            "data_type": str(df[col].dtype),
+            "missing_count": missing_cnt,
+            "missing_percentage": missing_pct,
+            "observed_count": total_rows - missing_cnt,
+            "status": status
+        })
+
+    summary_table = sorted(summary_table, key=lambda x: x["missing_percentage"], reverse=True)
+
+    # AI Missingness Insights
+    insights = []
+    if missing_cells == 0:
+        insights.append("Your dataset is completely clean with no missing values detected.")
+        insights.append("No imputation is required. The dataset is ready for downstream machine learning tasks.")
+    else:
+        insights.append(f"Missingness is present in {affected_features} out of {total_cols} features ({round(affected_features/total_cols*100, 1)}%).")
+        
+        top_missing_feat = summary_table[0]
+        if top_missing_feat["missing_percentage"] > 20:
+            insights.append(f"Feature '{top_missing_feat['feature']}' has a significantly high missing rate of {top_missing_feat['missing_percentage']}%. Consider whether imputation or removal is more appropriate.")
+        else:
+            insights.append(f"The most affected feature is '{top_missing_feat['feature']}' with {top_missing_feat['missing_percentage']}% missing values.")
+
+        if incomplete_rows > total_rows * 0.5:
+            insights.append(f"More than half ({round(incomplete_rows/total_rows*100, 1)}%) of the observations contain at least one missing value. Row-wise deletion would result in severe data loss.")
+        elif incomplete_rows > 0:
+            insights.append(f"Only {round(incomplete_rows/total_rows*100, 1)}% of rows are incomplete. Imputation will help salvage these observations without major distortions.")
+
+        if len(missing_patterns) > 0 and missing_patterns[0]["percentage"] > 5:
+            feats_str = ", ".join(missing_patterns[0]["features"])
+            insights.append(f"A strong pattern exists where [{feats_str}] are missing simultaneously in {missing_patterns[0]['percentage']}% of rows.")
+
+        if len(potential_indicators) > 0:
+            insights.append(f"Detected {len(potential_indicators)} potential placeholder values (like NULL, NA, or -1) which might represent hidden missing data. Please review the Potential Indicators section.")
 
     result = {
-        "total_rows": total_rows,
-        "total_cols": total_cols,
-        "missing_cells": missing_cells,
-        "missing_percentage": round(missing_cells / (total_rows * total_cols) * 100, 2) if total_rows * total_cols > 0 else 0,
-        "duplicate_rows": duplicate_rows,
-        "numeric_cols": numeric_cols,
-        "categorical_cols": categorical_cols,
-        "num_numeric": len(numeric_cols),
-        "num_categorical": len(categorical_cols),
-        "missing_per_col": missing_per_col,
-        "missing_pct_per_col": missing_pct,
-        "dtypes": dtypes,
-        "memory_usage_kb": memory_usage,
-        "stats": stats,
-        "correlation": correlation,
-        "missing_heatmap": missing_heatmap,
-        "histograms": histograms,
-        "boxplots": boxplots,
-        "dtype_distribution": dtype_distribution,
-        "preview": {
-            "columns": list(df.columns),
-            "data": preview_data,
+        "overview": {
+            "total_rows": total_rows,
+            "total_cols": total_cols,
+            "total_cells": total_rows * total_cols,
+            "missing_cells": missing_cells,
+            "missing_percentage": missing_percentage,
+            "affected_features": affected_features,
+            "severity": severity
         },
+        "row_missingness": {
+            "complete_rows": complete_rows,
+            "incomplete_rows": incomplete_rows,
+            "most_incomplete": most_incomplete
+        },
+        "missing_matrix": missing_matrix,
+        "missing_patterns": missing_patterns,
+        "missing_correlation": missing_correlation,
+        "potential_indicators": potential_indicators,
+        "summary_table": summary_table,
+        "insights": insights
     }
 
     return clean_json(result)

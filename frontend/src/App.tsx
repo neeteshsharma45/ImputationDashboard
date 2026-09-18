@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Dashboard from './pages/Dashboard'
+import EDA from './pages/EDA'
 import Results from './pages/Results'
 import Documentation from './pages/Documentation'
 import Footer from './components/Footer'
@@ -14,7 +15,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-main text-main flex flex-col font-sans selection:bg-brand/30 selection:text-brand">
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
             style: {
@@ -26,10 +27,11 @@ function App() {
           }}
         />
         <Navbar />
-        <main className="flex-grow pt-16">
+        <main className="flex-grow pt-16 sm:pt-20">
           <Routes>
             <Route path="/" element={<Home setDatasetId={setDatasetId} />} />
             <Route path="/dashboard" element={<Dashboard datasetId={datasetId} />} />
+            <Route path="/eda" element={<EDA datasetId={datasetId} />} />
             <Route path="/results" element={<Results datasetId={datasetId} />} />
             <Route path="/documentation" element={<Documentation />} />
           </Routes>
